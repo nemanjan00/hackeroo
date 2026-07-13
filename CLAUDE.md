@@ -39,6 +39,13 @@ incremental builds are ~2 s.
   `opt`/`optNum` (`key=value`), `flag`, `hexdump`, `printHz`.
 - `console::aborted()` — modules poll this in long loops to allow key-abort.
 
+## Pin configuration
+- All pin assignments live in one runtime struct `cfg` (`include/pins.h`,
+  defined in `src/pins.cpp`), loaded from flash via `EEPROM` at boot or reset to
+  `config.h` defaults. Modules read `cfg.<field>` directly — never hard-code a
+  pin. The `pins` module (`mod_pins.cpp`) views/sets/saves it and draws the
+  `pins map` ASCII board. Bump `MAGIC` in pins.cpp if you change the struct.
+
 ## Gotchas learned here (don't re-discover these)
 
 - **`const` linkage:** namespace-scope `const Module x = {…}` has *internal*

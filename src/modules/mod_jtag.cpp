@@ -12,14 +12,8 @@
 //  For AUTHORIZED testing of your own hardware only.
 // ============================================================================
 #include "console.h"
-#include "config.h"
 #include "util.h"
-
-static uint8_t s_ch[] = {
-  CFG_JTAG_CH0, CFG_JTAG_CH1, CFG_JTAG_CH2, CFG_JTAG_CH3,
-  CFG_JTAG_CH4, CFG_JTAG_CH5, CFG_JTAG_CH6, CFG_JTAG_CH7,
-};
-static int s_nch = sizeof(s_ch) / sizeof(s_ch[0]);
+#include "pins.h"
 
 // ---- low-level bit-bang helpers -------------------------------------------
 static inline void tckPulse(int tck) {
@@ -67,24 +61,24 @@ static bool tryIdcode(int tck, int tms, int tdi, int tdo, uint32_t* idOut) {
 }
 
 static void jtag_scan() {
-  Serial.printf("JTAG scan across %d channels (", s_nch);
-  for (int i = 0; i < s_nch; i++) Serial.printf("GP%d ", s_ch[i]);
+  Serial.printf("JTAG scan across %d channels (", cfg.jtag_nch);
+  for (int i = 0; i < cfg.jtag_nch; i++) Serial.printf("GP%d ", cfg.jtag_ch[i]);
   Serial.println(")");
   Serial.println("looking for a valid IDCODE — press a key to abort");
   int hits = 0;
   // Permute TCK, TMS, TDI, TDO over distinct channels.
-  for (int a = 0; a < s_nch; a++)
-  for (int b = 0; b < s_nch; b++) {
+  for (int a = 0; a < cfg.jtag_nch; a++)
+  for (int b = 0; b < cfg.jtag_nch; b++) {
     if (b == a) continue;
-    for (int c = 0; c < s_nch; c++) {
+    for (int c = 0; c < cfg.jtag_nch; c++) {
       if (c == a || c == b) continue;
       if (console::aborted()) { Serial.println("aborted."); return; }
-      for (int d = 0; d < s_nch; d++) {
+      for (int d = 0; d < cfg.jtag_nch; d++) {
         if (d == a || d == b || d == c) continue;
         uint32_t id;
-        if (tryIdcode(s_ch[a], s_ch[b], s_ch[c], s_ch[d], &id)) {
+        if (tryIdcode(cfg.jtag_ch[a], cfg.jtag_ch[b], cfg.jtag_ch[c], cfg.jtag_ch[d], &id)) {
           Serial.printf("  HIT  TCK=GP%d TMS=GP%d TDI=GP%d TDO=GP%d  IDCODE=0x%08lx\r\n",
-                        s_ch[a], s_ch[b], s_ch[c], s_ch[d], (unsigned long)id);
+                        cfg.jtag_ch[a], cfg.jtag_ch[b], cfg.jtag_ch[c], cfg.jtag_ch[d], (unsigned long)id);
           hits++;
         }
       }
@@ -130,16 +124,16 @@ static bool trySwd(int clk, int io, uint32_t* idOut) {
 }
 
 static void swd_scan() {
-  Serial.printf("SWD scan across %d channels — press a key to abort\r\n", s_nch);
+  Serial.printf("SWD scan across %d channels — press a key to abort\r\n", cfg.jtag_nch);
   int hits = 0;
-  for (int a = 0; a < s_nch; a++)
-  for (int b = 0; b < s_nch; b++) {
+  for (int a = 0; a < cfg.jtag_nch; a++)
+  for (int b = 0; b < cfg.jtag_nch; b++) {
     if (b == a) continue;
     if (console::aborted()) { Serial.println("aborted."); return; }
     uint32_t id;
-    if (trySwd(s_ch[a], s_ch[b], &id)) {
+    if (trySwd(cfg.jtag_ch[a], cfg.jtag_ch[b], &id)) {
       Serial.printf("  HIT  SWCLK=GP%d SWDIO=GP%d  DPIDR=0x%08lx\r\n",
-                    s_ch[a], s_ch[b], (unsigned long)id);
+                    cfg.jtag_ch[a], cfg.jtag_ch[b], (unsigned long)id);
       hits++;
     }
   }
@@ -158,7 +152,7 @@ static void jtag_help() {
   Serial.println("  jtag scan   find TCK/TMS/TDI/TDO via IDCODE (permutes all channels)");
   Serial.println("  jtag swd    find SWCLK/SWDIO via JTAG-to-SWD + DP IDCODE");
   Serial.print  ("  channels: ");
-  for (int i = 0; i < s_nch; i++) Serial.printf("GP%d ", s_ch[i]);
+  for (int i = 0; i < cfg.jtag_nch; i++) Serial.printf("GP%d ", cfg.jtag_ch[i]);
   Serial.println("\r\n  (edit CFG_JTAG_CH* in config.h to change)");
 }
 

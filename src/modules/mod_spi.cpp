@@ -5,37 +5,35 @@
 #include "console.h"
 #include "config.h"
 #include "util.h"
+#include "pins.h"
 #include <SPI.h>
 #include <hardware/gpio.h>
 
-static int  s_sck = CFG_SPI_SCK, s_mosi = CFG_SPI_MOSI, s_miso = CFG_SPI_MISO, s_cs = CFG_SPI_CS;
-static long s_hz  = CFG_SPI_HZ;
-static int  s_mode = SPI_MODE0;
 static bool s_up  = false;
 
 static void spi_begin(int argc, char** argv) {
-  s_sck  = util::optNum(argc, argv, "sck",  s_sck);
-  s_mosi = util::optNum(argc, argv, "mosi", s_mosi);
-  s_miso = util::optNum(argc, argv, "miso", s_miso);
-  s_cs   = util::optNum(argc, argv, "cs",   s_cs);
-  s_hz   = util::optNum(argc, argv, "hz",   s_hz);
+  cfg.spi_sck  = util::optNum(argc, argv, "sck",  cfg.spi_sck);
+  cfg.spi_mosi = util::optNum(argc, argv, "mosi", cfg.spi_mosi);
+  cfg.spi_miso = util::optNum(argc, argv, "miso", cfg.spi_miso);
+  cfg.spi_cs   = util::optNum(argc, argv, "cs",   cfg.spi_cs);
+  cfg.spi_hz   = util::optNum(argc, argv, "hz",   cfg.spi_hz);
   long mode = util::optNum(argc, argv, "mode", -1);   // SPI_MODE0..3 == 0..3
-  if (mode >= 0 && mode <= 3) s_mode = (int)mode;
+  if (mode >= 0 && mode <= 3) cfg.spi_mode = (int)mode;
   if (!s_up) {
-    SPI.setSCK(s_sck);
-    SPI.setTX(s_mosi);
-    SPI.setRX(s_miso);
+    SPI.setSCK(cfg.spi_sck);
+    SPI.setTX(cfg.spi_mosi);
+    SPI.setRX(cfg.spi_miso);
     SPI.begin();
     s_up = true;
   }
-  pinMode(s_cs, OUTPUT);
-  digitalWrite(s_cs, HIGH);   // deselect
+  pinMode(cfg.spi_cs, OUTPUT);
+  digitalWrite(cfg.spi_cs, HIGH);   // deselect
 }
 
-static inline void csLow()  { digitalWrite(s_cs, LOW); }
-static inline void csHigh() { digitalWrite(s_cs, HIGH); }
+static inline void csLow()  { digitalWrite(cfg.spi_cs, LOW); }
+static inline void csHigh() { digitalWrite(cfg.spi_cs, HIGH); }
 
-static void beginTx() { SPI.beginTransaction(SPISettings(s_hz, MSBFIRST, s_mode)); }
+static void beginTx() { SPI.beginTransaction(SPISettings(cfg.spi_hz, MSBFIRST, cfg.spi_mode)); }
 static void endTx()   { SPI.endTransaction(); }
 
 static const char* jedecVendor(uint8_t id) {
@@ -114,13 +112,13 @@ static void spi_xfer(int argc, char** argv, int first) {
 // good for slow buses (up to a few hundred kHz); use a logic analyser / PIO
 // for fast SPI. Sample edge follows the SPI mode (rising for mode 0/3).
 static void spi_sniff() {
-  pinMode(s_sck, INPUT); pinMode(s_mosi, INPUT);
-  pinMode(s_miso, INPUT); pinMode(s_cs, INPUT);
-  bool sampleRising = (s_mode == 0 || s_mode == 3);
+  pinMode(cfg.spi_sck, INPUT); pinMode(cfg.spi_mosi, INPUT);
+  pinMode(cfg.spi_miso, INPUT); pinMode(cfg.spi_cs, INPUT);
+  bool sampleRising = (cfg.spi_mode == 0 || cfg.spi_mode == 3);
   Serial.printf("sniffing SPI SCK=GP%d MOSI=GP%d MISO=GP%d CS=GP%d mode%d — key to stop\r\n",
-                s_sck, s_mosi, s_miso, s_cs, s_mode);
+                cfg.spi_sck, cfg.spi_mosi, cfg.spi_miso, cfg.spi_cs, cfg.spi_mode);
   Serial.println("(CS-low frames; each byte shown as MOSI/MISO)");
-  const uint32_t sckM = 1u << s_sck, csM = 1u << s_cs, moM = 1u << s_mosi, miM = 1u << s_miso;
+  const uint32_t sckM = 1u << cfg.spi_sck, csM = 1u << cfg.spi_cs, moM = 1u << cfg.spi_mosi, miM = 1u << cfg.spi_miso;
   uint32_t g = gpio_get_all();
   int psck = (g & sckM) ? 1 : 0, pcs = (g & csM) ? 1 : 0;
   uint8_t mo = 0, mi = 0; int nb = 0; bool active = false; uint32_t it = 0;
@@ -149,12 +147,12 @@ static void spi_run(int argc, char** argv) {
 
   // Sniff must NOT take the bus (no SPI.begin) — parse pins and read as GPIO.
   if (strcmp(cmd, "sniff") == 0) {
-    s_sck  = util::optNum(argc, argv, "sck",  s_sck);
-    s_mosi = util::optNum(argc, argv, "mosi", s_mosi);
-    s_miso = util::optNum(argc, argv, "miso", s_miso);
-    s_cs   = util::optNum(argc, argv, "cs",   s_cs);
+    cfg.spi_sck  = util::optNum(argc, argv, "sck",  cfg.spi_sck);
+    cfg.spi_mosi = util::optNum(argc, argv, "mosi", cfg.spi_mosi);
+    cfg.spi_miso = util::optNum(argc, argv, "miso", cfg.spi_miso);
+    cfg.spi_cs   = util::optNum(argc, argv, "cs",   cfg.spi_cs);
     long mode = util::optNum(argc, argv, "mode", -1);
-    if (mode >= 0 && mode <= 3) s_mode = (int)mode;
+    if (mode >= 0 && mode <= 3) cfg.spi_mode = (int)mode;
     if (s_up) { SPI.end(); s_up = false; }
     spi_sniff();
     return;
@@ -190,8 +188,8 @@ static void spi_help() {
   Serial.println("  spi dump [addr] [len]     dump (len=0 -> whole chip)");
   Serial.println("  spi xfer <byte...>        raw transfer, print MISO");
   Serial.println("  spi sniff                 passive bus monitor (slow buses)");
-  Serial.printf ("  defaults: SCK=GP%d MOSI=GP%d MISO=GP%d CS=GP%d\r\n",
-                 CFG_SPI_SCK, CFG_SPI_MOSI, CFG_SPI_MISO, CFG_SPI_CS);
+  Serial.printf ("  pins (pins module): SCK=GP%d MOSI=GP%d MISO=GP%d CS=GP%d\r\n",
+                 cfg.spi_sck, cfg.spi_mosi, cfg.spi_miso, cfg.spi_cs);
 }
 
 extern const Module spiModule = { "spi", "SPI bus + NOR-flash probe/dump", spi_run, spi_help };

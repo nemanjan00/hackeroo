@@ -6,6 +6,7 @@
 #include "console.h"
 
 extern const Module sysModule;
+extern const Module pinsModule;
 extern const Module gpioModule;
 extern const Module uartModule;
 extern const Module i2cModule;

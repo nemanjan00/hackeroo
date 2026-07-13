@@ -5,28 +5,27 @@
 #include "console.h"
 #include "config.h"
 #include "util.h"
+#include "pins.h"
 #include <Wire.h>
 #include <hardware/gpio.h>
 
-static int   s_sda = CFG_I2C_SDA, s_scl = CFG_I2C_SCL;
-static long  s_hz  = CFG_I2C_HZ;
 static bool  s_up  = false;
 
 static void i2c_begin(int argc, char** argv) {
-  s_sda = util::optNum(argc, argv, "sda", s_sda);
-  s_scl = util::optNum(argc, argv, "scl", s_scl);
-  s_hz  = util::optNum(argc, argv, "hz",  s_hz);
+  cfg.i2c_sda = util::optNum(argc, argv, "sda", cfg.i2c_sda);
+  cfg.i2c_scl = util::optNum(argc, argv, "scl", cfg.i2c_scl);
+  cfg.i2c_hz  = util::optNum(argc, argv, "hz",  cfg.i2c_hz);
   if (s_up) Wire.end();
-  Wire.setSDA(s_sda);
-  Wire.setSCL(s_scl);
-  Wire.setClock(s_hz);
+  Wire.setSDA(cfg.i2c_sda);
+  Wire.setSCL(cfg.i2c_scl);
+  Wire.setClock(cfg.i2c_hz);
   Wire.begin();
   s_up = true;
 }
 
 static void i2c_scan() {
-  Serial.printf("scanning I2C  (SDA=GP%d SCL=GP%d ", s_sda, s_scl);
-  util::printHz(s_hz); Serial.println(")");
+  Serial.printf("scanning I2C  (SDA=GP%d SCL=GP%d ", cfg.i2c_sda, cfg.i2c_scl);
+  util::printHz(cfg.i2c_hz); Serial.println(")");
   Serial.println("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f");
   int found = 0;
   for (int hi = 0; hi < 8; hi++) {
@@ -78,10 +77,10 @@ static void i2c_write(int addr, int argc, char** argv, int firstByte) {
 // for standard-mode (100 kHz); marginal at 400 kHz. First byte after START is
 // the address<<1 | R/W.
 static void i2c_sniff() {
-  pinMode(s_sda, INPUT); pinMode(s_scl, INPUT);
-  Serial.printf("sniffing I2C SDA=GP%d SCL=GP%d — passive; key to stop\r\n", s_sda, s_scl);
+  pinMode(cfg.i2c_sda, INPUT); pinMode(cfg.i2c_scl, INPUT);
+  Serial.printf("sniffing I2C SDA=GP%d SCL=GP%d — passive; key to stop\r\n", cfg.i2c_sda, cfg.i2c_scl);
   Serial.println("(S=start P=stop; byte+ =ACK, byte- =NACK; 1st byte = addr<<1|rw)");
-  const uint32_t sdaM = 1u << s_sda, sclM = 1u << s_scl;
+  const uint32_t sdaM = 1u << cfg.i2c_sda, sclM = 1u << cfg.i2c_scl;
   uint32_t g = gpio_get_all();
   int pscl = (g & sclM) ? 1 : 0, psda = (g & sdaM) ? 1 : 0;
   uint8_t byte = 0; int nb = 0; bool inFrame = false, awaitAck = false; uint32_t it = 0;
@@ -108,8 +107,8 @@ static void i2c_run(int argc, char** argv) {
 
   // Sniff must NOT drive the bus — parse pins and read as plain GPIO.
   if (strcmp(cmd, "sniff") == 0) {
-    s_sda = util::optNum(argc, argv, "sda", s_sda);
-    s_scl = util::optNum(argc, argv, "scl", s_scl);
+    cfg.i2c_sda = util::optNum(argc, argv, "sda", cfg.i2c_sda);
+    cfg.i2c_scl = util::optNum(argc, argv, "scl", cfg.i2c_scl);
     if (s_up) { Wire.end(); s_up = false; }
     i2c_sniff();
     return;
@@ -146,7 +145,8 @@ static void i2c_help() {
   Serial.println("  i2c write <addr> <byte...>   write raw bytes");
   Serial.println("  i2c dump <addr> [len]        hexdump len bytes from reg 0");
   Serial.println("  i2c sniff                    passive bus monitor (<=100 kHz)");
-  Serial.printf ("  defaults: SDA=GP%d SCL=GP%d %ld Hz\r\n", CFG_I2C_SDA, CFG_I2C_SCL, (long)CFG_I2C_HZ);
+  Serial.printf ("  pins (pins module): SDA=GP%d SCL=GP%d %lu Hz\r\n",
+                 cfg.i2c_sda, cfg.i2c_scl, (unsigned long)cfg.i2c_hz);
 }
 
 extern const Module i2cModule = { "i2c", "scan bus, read/write/dump devices", i2c_run, i2c_help };

@@ -26,6 +26,7 @@ Inspired by JTAGenum/JTAGulator, [BlueTag](https://github.com/koutto/bluetag),
 | cmd      | what it does |
 |----------|--------------|
 | `sys`    | chip id, clocks, temperature, reboot / reboot-to-BOOTSEL |
+| `pins`   | **view/set/save the runtime pin map** + **ASCII board diagram** |
 | `gpio`   | read / write / toggle / mode / scan / watch, **knight-rider `chase`** LED animation |
 | `uart`   | **auto-baud detection**, passive sniffer, transparent bridge |
 | `i2c`    | bus scanner, register read/write, block dump, **passive sniff** |
@@ -81,26 +82,46 @@ Long-running commands (scans, dumps, sniff, sweep) stop when you **press a key**
 
 ---
 
-## Default pin map
+## Pins — runtime configurable
 
-All pins are configurable per-command (`sda=`, `sck=`, `pin=`, `trig=`, …) and
-default to the values in [`include/config.h`](include/config.h). Modules are
-used one at a time, so some defaults overlap — just don't wire two active
-functions to the same pin.
+The whole pin map lives in one place and is editable at runtime with the `pins`
+module — **persisted to flash**, so your wiring survives a reboot. `pins map`
+draws the board with the live function of every pin:
 
-| function            | pin(s)            |
-|---------------------|-------------------|
-| UART TX / RX        | GP0 / GP1         |
-| I2C SDA / SCL       | GP4 / GP5         |
-| SPI SCK/MOSI/MISO/CS| GP18/19/16/17     |
-| siggen out / ADC in | GP15 / GP26 (ADC0)|
-| PIO demo out        | GP14              |
-| JTAG/SWD channels   | GP6..GP13         |
-| glitch trig/out/pwr | GP2 / GP3 / GP4   |
+```text
+                    +----- USB -----+
+           UART.TX GP0  | 1     40|VBUS
+           UART.RX GP1  | 2     39|VSYS
+                   GND  | 3     38|GND
+           GL.TRIG GP2  | 4     37|3V3EN
+            GL.OUT GP3  | 5     36|3V3
+    I2C.SDA,GL.PWR GP4  | 6     35|VREF
+           I2C.SCL GP5  | 7     34|GP28
+                   GND  | 8     33|AGND
+              JTAG GP6  | 9     32|GP27
+              JTAG GP7  |10     31|GP26   ADC
+              JTAG GP8  |11     30|RUN
+              JTAG GP9  |12     29|GP22
+                   GND  |13     28|GND
+              JTAG GP10 |14     27|GP21
+              JTAG GP11 |15     26|GP20
+              JTAG GP12 |16     25|GP19   SPI.MOSI
+              JTAG GP13 |17     24|GP18   SPI.SCK
+                   GND  |18     23|GND
+               PIO GP14 |19     22|GP17   SPI.CS
+               SIG GP15 |20     21|GP16   SPI.MISO
+                    +---------------+
+```
 
-For **UART** wire the *target's TX* to our **RX (GP1)**. For **JTAG/SWD** wire
-the unknown test points to any of the channel pins in any order — the scanner
-brute-forces the roles.
+- `pins show` — list every assignment (`i2c.sda 4`, `glitch.trig 2`, …)
+- `pins set i2c.sda 20` — reassign a function, then `pins save` to persist it
+- `pins reset` — restore the compile-time defaults from [`include/config.h`](include/config.h)
+
+Per-command overrides still work for one-off use (`i2c scan sda=20 scl=21`).
+Modules run one at a time, so default assignments may overlap — just don't wire
+two *active* functions to the same pin. For **UART** wire the target's TX to our
+RX; for **JTAG/SWD** wire the unknown test points to any channel pins in any
+order (the scanner brute-forces the roles).
 
 ---
 

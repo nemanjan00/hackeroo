@@ -133,6 +133,12 @@ def run(port):
     expect(s, "sys info clocks", "sys info", "chip id", "150000000")
     expect(s, "sys temp reports", "sys temp", "temp sensor")
 
+    print("\n[pins]")
+    expect(s, "pins show list", "pins show", "i2c.sda", "glitch.trig")
+    expect(s, "pins map board", "pins map", "USB", "GP0", "GP15", "SPI.MISO", wait=0.9)
+    expect(s, "pins set updates", "pins set pio.pin 9", "pio.pin = 9")
+    expect(s, "pins reset restores", "pins reset", "defaults")
+
     print("\n[gpio]")
     expect(s, "gpio scan range", "gpio scan", "GP0", "GP28")
     expect(s, "gpio read", "gpio read 15", "GP15 =")

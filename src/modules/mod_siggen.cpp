@@ -17,8 +17,7 @@
 #include <hardware/adc.h>
 #include <hardware/clocks.h>
 #include <math.h>
-
-static int s_pin = CFG_SIG_PIN;
+#include "pins.h"
 
 // A plain square wave straight out of the PWM slice.
 // period = div * (wrap+1) system clocks; solve for a valid (div, wrap) pair.
@@ -36,44 +35,44 @@ static void sig_pwm(long hz, float duty) {
   if (period > 65536)  period = 65536;
   uint32_t wrap = period - 1;
 
-  gpio_set_function(s_pin, GPIO_FUNC_PWM);
-  uint slice = pwm_gpio_to_slice_num(s_pin);
-  uint chan  = pwm_gpio_to_channel(s_pin);
+  gpio_set_function(cfg.sig_pin, GPIO_FUNC_PWM);
+  uint slice = pwm_gpio_to_slice_num(cfg.sig_pin);
+  uint chan  = pwm_gpio_to_channel(cfg.sig_pin);
   pwm_set_clkdiv(slice, (float)div);
   pwm_set_wrap(slice, wrap);
   pwm_set_chan_level(slice, chan, (uint32_t)(period * duty));
   pwm_set_enabled(slice, true);
 
   double actual = (double)sys / (div * (double)period);
-  Serial.printf("PWM on GP%d: target ", s_pin); util::printHz(hz);
+  Serial.printf("PWM on GP%d: target ", cfg.sig_pin); util::printHz(hz);
   Serial.printf(" duty %.0f%%  actual ~%.1f Hz (div=%.2f wrap=%lu)\r\n",
                 duty * 100, actual, div, (unsigned long)wrap);
 }
 
 // PWM-as-DAC: run PWM fast (11-bit) and vary duty to set the average voltage.
 static void dac_setup() {
-  gpio_set_function(s_pin, GPIO_FUNC_PWM);
-  uint slice = pwm_gpio_to_slice_num(s_pin);
+  gpio_set_function(cfg.sig_pin, GPIO_FUNC_PWM);
+  uint slice = pwm_gpio_to_slice_num(cfg.sig_pin);
   pwm_set_clkdiv(slice, 1.0f);
   pwm_set_wrap(slice, 2047);            // 11-bit, ~73 kHz carrier @150MHz
   pwm_set_enabled(slice, true);
 }
 static inline void dac_write(float level) {
   if (level < 0) level = 0; if (level > 1) level = 1;
-  pwm_set_chan_level(pwm_gpio_to_slice_num(s_pin), pwm_gpio_to_channel(s_pin),
+  pwm_set_chan_level(pwm_gpio_to_slice_num(cfg.sig_pin), pwm_gpio_to_channel(cfg.sig_pin),
                      (uint32_t)(level * 2047));
 }
 
 static void sig_dc(float level) {
   dac_setup();
   dac_write(level);
-  Serial.printf("DC ~%.3f V on GP%d (of 3.3V) via PWM-DAC\r\n", level * 3.3f, s_pin);
+  Serial.printf("DC ~%.3f V on GP%d (of 3.3V) via PWM-DAC\r\n", level * 3.3f, cfg.sig_pin);
 }
 
 static void sig_wave(const char* shape, long hz) {
   dac_setup();
   Serial.printf("%s wave ~", shape); util::printHz(hz);
-  Serial.printf(" on GP%d (RC-filter the pin!) — press a key to stop\r\n", s_pin);
+  Serial.printf(" on GP%d (RC-filter the pin!) — press a key to stop\r\n", cfg.sig_pin);
   const int N = 64;                     // samples per period
   float lut[N];
   for (int i = 0; i < N; i++) {
@@ -110,7 +109,7 @@ static void sig_adc(int argc, char** argv) {
 static void sig_run(int argc, char** argv) {
   const char* cmd = util::arg(argc, argv, 0);
   if (!cmd) { Serial.println("siggen: need a subcommand (help)"); return; }
-  s_pin = util::optNum(argc, argv, "pin", s_pin);
+  cfg.sig_pin = util::optNum(argc, argv, "pin", cfg.sig_pin);
 
   if (strcmp(cmd, "pwm") == 0) {
     long hz = util::numOr(util::arg(argc, argv, 1), 1000);
@@ -125,8 +124,8 @@ static void sig_run(int argc, char** argv) {
   } else if (strcmp(cmd, "adc") == 0) {
     sig_adc(argc, argv);
   } else if (strcmp(cmd, "off") == 0) {
-    pwm_set_enabled(pwm_gpio_to_slice_num(s_pin), false);
-    Serial.printf("PWM off on GP%d\r\n", s_pin);
+    pwm_set_enabled(pwm_gpio_to_slice_num(cfg.sig_pin), false);
+    Serial.printf("PWM off on GP%d\r\n", cfg.sig_pin);
   } else {
     Serial.printf("siggen: unknown '%s'\r\n", cmd);
   }
@@ -139,7 +138,7 @@ static void sig_help() {
   Serial.println("  siggen dc <percent>          hold DC level (0..100)");
   Serial.println("  siggen adc [ch=0] [-c]        read ADC (0..2 = GP26..28)");
   Serial.println("  siggen off                   stop output");
-  Serial.printf ("  defaults: out=GP%d  adc-in=GP%d\r\n", CFG_SIG_PIN, CFG_ADC_PIN);
+  Serial.printf ("  pins (pins module): out=GP%d  adc-in=GP%d\r\n", cfg.sig_pin, cfg.adc_pin);
 }
 
 extern const Module siggenModule = { "siggen", "PWM/DAC waveform gen + ADC read", sig_run, sig_help };

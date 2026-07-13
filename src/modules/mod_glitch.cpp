@@ -21,8 +21,8 @@
 //  as clearly-marked extension points (see raiden-pico for a full impl).
 // ============================================================================
 #include "console.h"
-#include "config.h"
 #include "util.h"
+#include "pins.h"
 #include <hardware/pio.h>
 #include <hardware/clocks.h>
 
@@ -34,9 +34,6 @@ static int   s_off   = -1;
 static struct pio_program s_prog;
 static uint16_t s_insns[11];
 
-static int      s_trig  = CFG_GLITCH_TRIGGER;
-static int      s_out   = CFG_GLITCH_OUT;
-static int      s_pwr   = CFG_GLITCH_PWR;
 static uint32_t s_delay = 100;     // cycles
 static uint32_t s_width = 10;      // cycles
 static Edge     s_edge  = EDGE_MANUAL;
@@ -73,8 +70,8 @@ static void glitch_load() {
   // 10 push               notify CPU, then wrap -> re-arm
   s_insns[0]  = pio_encode_pull(false, true);
   s_insns[1]  = pio_encode_mov(pio_x, pio_osr);
-  s_insns[2]  = pio_encode_wait_gpio(waitA, s_trig);
-  s_insns[3]  = pio_encode_wait_gpio(waitB, s_trig);
+  s_insns[2]  = pio_encode_wait_gpio(waitA, cfg.glitch_trig);
+  s_insns[3]  = pio_encode_wait_gpio(waitB, cfg.glitch_trig);
   s_insns[4]  = pio_encode_jmp_x_dec(4);
   s_insns[5]  = pio_encode_pull(false, true);
   s_insns[6]  = pio_encode_mov(pio_x, pio_osr);
@@ -91,15 +88,15 @@ static void glitch_load() {
 
   pio_sm_config c = pio_get_default_sm_config();
   sm_config_set_wrap(&c, s_off + 0, s_off + 10);
-  sm_config_set_set_pins(&c, s_out, 1);
+  sm_config_set_set_pins(&c, cfg.glitch_out, 1);
   sm_config_set_clkdiv(&c, 1.0f);              // full system clock
 
   // Glitch output pin driven by PIO.
-  pio_gpio_init(s_pio, s_out);
-  pio_sm_set_consecutive_pindirs(s_pio, s_sm, s_out, 1, true);
+  pio_gpio_init(s_pio, cfg.glitch_out);
+  pio_sm_set_consecutive_pindirs(s_pio, s_sm, cfg.glitch_out, 1, true);
   // Trigger pin: input for external edges, output(low) for manual firing.
-  if (s_edge == EDGE_MANUAL) { pinMode(s_trig, OUTPUT); digitalWrite(s_trig, LOW); }
-  else                        pinMode(s_trig, INPUT);
+  if (s_edge == EDGE_MANUAL) { pinMode(cfg.glitch_trig, OUTPUT); digitalWrite(cfg.glitch_trig, LOW); }
+  else                        pinMode(cfg.glitch_trig, INPUT);
 
   pio_sm_init(s_pio, s_sm, s_off, &c);
   pio_sm_set_enabled(s_pio, s_sm, true);
@@ -114,7 +111,7 @@ static void prime() {
   pio_sm_clear_fifos(s_pio, s_sm);
   pio_sm_restart(s_pio, s_sm);
   pio_sm_exec(s_pio, s_sm, pio_encode_jmp(s_off));   // PC -> program start
-  if (s_edge == EDGE_MANUAL) digitalWrite(s_trig, LOW);
+  if (s_edge == EDGE_MANUAL) digitalWrite(cfg.glitch_trig, LOW);
   pio_sm_set_enabled(s_pio, s_sm, true);
 }
 
@@ -126,13 +123,13 @@ static bool fireOnce(uint32_t timeout_ms) {
   uint32_t w = s_width ? s_width - 1 : 0;
   pio_sm_put_blocking(s_pio, s_sm, d);
   pio_sm_put_blocking(s_pio, s_sm, w);
-  if (s_edge == EDGE_MANUAL) { digitalWrite(s_trig, HIGH); }  // fire!
+  if (s_edge == EDGE_MANUAL) { digitalWrite(cfg.glitch_trig, HIGH); }  // fire!
   uint32_t t0 = millis();
   bool done = false;
   while ((millis() - t0) < timeout_ms) {
     if (!pio_sm_is_rx_fifo_empty(s_pio, s_sm)) { pio_sm_get(s_pio, s_sm); done = true; break; }
   }
-  if (s_edge == EDGE_MANUAL) { digitalWrite(s_trig, LOW); }
+  if (s_edge == EDGE_MANUAL) { digitalWrite(cfg.glitch_trig, LOW); }
   return done;
 }
 
@@ -142,7 +139,7 @@ static void glitch_status() {
   Serial.printf("trigger : %s\r\n", em);
   Serial.printf("delay   : %lu cyc (%.1f ns)\r\n", (unsigned long)s_delay, cyc_to_ns(s_delay));
   Serial.printf("width   : %lu cyc (%.1f ns)\r\n", (unsigned long)s_width, cyc_to_ns(s_width));
-  Serial.printf("pins    : trig=GP%d out=GP%d pwr=GP%d\r\n", s_trig, s_out, s_pwr);
+  Serial.printf("pins    : trig=GP%d out=GP%d pwr=GP%d\r\n", cfg.glitch_trig, cfg.glitch_out, cfg.glitch_pwr);
 }
 
 static void glitch_run(int argc, char** argv) {
@@ -150,9 +147,9 @@ static void glitch_run(int argc, char** argv) {
   if (!cmd) { glitch_status(); return; }
 
   if (strcmp(cmd, "set") == 0) {
-    s_trig = util::optNum(argc, argv, "trig", s_trig);
-    s_out  = util::optNum(argc, argv, "out",  s_out);
-    s_pwr  = util::optNum(argc, argv, "pwr",  s_pwr);
+    cfg.glitch_trig = util::optNum(argc, argv, "trig", cfg.glitch_trig);
+    cfg.glitch_out  = util::optNum(argc, argv, "out",  cfg.glitch_out);
+    cfg.glitch_pwr  = util::optNum(argc, argv, "pwr",  cfg.glitch_pwr);
     if (util::opt(argc, argv, "delayns", nullptr)) s_delay = ns_to_cyc(util::optNum(argc, argv, "delayns", 0));
     if (util::opt(argc, argv, "widthns", nullptr)) s_width = ns_to_cyc(util::optNum(argc, argv, "widthns", 0));
     s_delay = util::optNum(argc, argv, "delay", s_delay);
@@ -178,7 +175,7 @@ static void glitch_run(int argc, char** argv) {
       pio_sm_unclaim(s_pio, s_sm);
       s_sm = -1; s_off = -1;
     }
-    pinMode(s_out, INPUT);           // release the line
+    pinMode(cfg.glitch_out, INPUT);           // release the line
     s_armed = false;
     Serial.println("disarmed.");
   } else if (strcmp(cmd, "fire") == 0) {
@@ -207,10 +204,10 @@ static void glitch_run(int argc, char** argv) {
     Serial.println("sweep done.");
   } else if (strcmp(cmd, "power") == 0) {
     const char* m = util::arg(argc, argv, 1);
-    pinMode(s_pwr, OUTPUT);
-    if      (m && !strcmp(m, "on"))    { digitalWrite(s_pwr, HIGH); Serial.println("power on"); }
-    else if (m && !strcmp(m, "off"))   { digitalWrite(s_pwr, LOW);  Serial.println("power off"); }
-    else if (m && !strcmp(m, "cycle")) { digitalWrite(s_pwr, LOW); delay(200); digitalWrite(s_pwr, HIGH); Serial.println("power cycled"); }
+    pinMode(cfg.glitch_pwr, OUTPUT);
+    if      (m && !strcmp(m, "on"))    { digitalWrite(cfg.glitch_pwr, HIGH); Serial.println("power on"); }
+    else if (m && !strcmp(m, "off"))   { digitalWrite(cfg.glitch_pwr, LOW);  Serial.println("power off"); }
+    else if (m && !strcmp(m, "cycle")) { digitalWrite(cfg.glitch_pwr, LOW); delay(200); digitalWrite(cfg.glitch_pwr, HIGH); Serial.println("power cycled"); }
     else Serial.println("power on|off|cycle");
   } else if (strcmp(cmd, "status") == 0) {
     glitch_status();

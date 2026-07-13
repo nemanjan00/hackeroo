@@ -8,14 +8,14 @@
 // ============================================================================
 #include <Arduino.h>
 #include "console.h"
-#include "config.h"
+#include "pins.h"
 
 // Power-on flourish: a fast knight-rider sweep across the configured GPIO
 // range, then a double flash. Pins are released to INPUT afterwards so the
 // modules can drive/read them normally.
 static void bootAnimation() {
-#if CFG_BOOTANIM_ENABLE
-  const int lo = CFG_BOOTANIM_FIRST, hi = CFG_BOOTANIM_LAST, ms = CFG_BOOTANIM_MS;
+  if (!cfg.bootanim_enable) return;
+  const int lo = cfg.bootanim_first, hi = cfg.bootanim_last, ms = cfg.bootanim_ms;
   for (int p = lo; p <= hi; p++) { pinMode(p, OUTPUT); digitalWrite(p, LOW); }
   for (int p = lo; p <= hi; p++) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
   for (int p = hi - 1; p > lo;  p--) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
@@ -26,13 +26,13 @@ static void bootAnimation() {
     delay(70);
   }
   for (int p = lo; p <= hi; p++) pinMode(p, INPUT);   // release the lines
-#endif
 }
 
 void setup() {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);   // solid = alive & waiting for a host
+  pins::begin();                     // load pin map from flash (or defaults)
   bootAnimation();
   console::begin();
 }

@@ -11,6 +11,7 @@
 #include "console.h"
 #include "config.h"
 #include "util.h"
+#include "pins.h"
 #include <hardware/pio.h>
 #include <hardware/clocks.h>
 
@@ -77,7 +78,7 @@ static void pio_run(int argc, char** argv) {
   if (!cmd) { Serial.println("pio: need a subcommand (help)"); return; }
 
   if (strcmp(cmd, "sq") == 0) {
-    int  pin = util::optNum(argc, argv, "pin", CFG_PIO_PIN);
+    int  pin = util::optNum(argc, argv, "pin", cfg.pio_pin);
     long hz  = util::numOr(util::arg(argc, argv, 1), 1000);
     pio_square(pin, hz);
   } else if (strcmp(cmd, "off") == 0) {
@@ -92,7 +93,7 @@ static void pio_help() {
   Serial.println("pio — PIO state-machine demos");
   Serial.println("  pio sq <hz> [pin=N]   precise square wave via PIO");
   Serial.println("  pio off               stop and free the state machine");
-  Serial.printf ("  default pin: GP%d\r\n", CFG_PIO_PIN);
+  Serial.printf ("  default pin: GP%d\r\n", cfg.pio_pin);
 }
 
 extern const Module pioModule = { "pio", "PIO square-wave / SM demo", pio_run, pio_help };

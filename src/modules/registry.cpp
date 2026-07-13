@@ -7,6 +7,7 @@
 
 const Module* const kModules[] = {
   &sysModule,
+  &pinsModule,
   &gpioModule,
   &uartModule,
   &i2cModule,
