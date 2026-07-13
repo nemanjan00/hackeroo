@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 260" width="560" height="260" font-family="ui-monospace,'DejaVu Sans Mono',Menlo,Consolas,monospace">
+  <!-- panel -->
+  <rect x="2" y="2" width="556" height="256" rx="24" fill="#0d1117" stroke="#238636" stroke-width="3"/>
+  <!-- faint circuit flair -->
+  <g stroke="#238636" stroke-width="2" opacity="0.25" fill="none">
+    <path d="M20 40 h30 v25 h20"/><circle cx="70" cy="65" r="3" fill="#238636"/>
+    <path d="M540 220 h-30 v-25 h-20"/><circle cx="490" cy="195" r="3" fill="#238636"/>
+    <path d="M540 60 h-24"/><path d="M20 210 h24"/>
+  </g>
+
+  <!-- ===== kangaroo hacker mascot ===== -->
+  <g transform="translate(30,20)">
+    <!-- ears (behind head) -->
+    <g>
+      <ellipse cx="95"  cy="34" rx="14" ry="38" fill="#c8763b" transform="rotate(-13 95 34)"/>
+      <ellipse cx="95"  cy="38" rx="6"  ry="24" fill="#e8a06a" transform="rotate(-13 95 38)"/>
+      <ellipse cx="176" cy="34" rx="14" ry="38" fill="#c8763b" transform="rotate(13 176 34)"/>
+      <ellipse cx="176" cy="38" rx="6"  ry="24" fill="#e8a06a" transform="rotate(13 176 38)"/>
+    </g>
+
+    <!-- hood (backdrop) -->
+    <path d="M56 118 C56 58 92 50 135 50 C178 50 214 58 214 118 C214 150 192 168 135 168 C78 168 56 150 56 118 Z" fill="#30363d"/>
+
+    <!-- face -->
+    <ellipse cx="135" cy="106" rx="62" ry="58" fill="#c8763b"/>
+    <!-- snout -->
+    <ellipse cx="135" cy="140" rx="36" ry="27" fill="#dda15e"/>
+    <!-- nose + mouth -->
+    <ellipse cx="135" cy="126" rx="11" ry="8" fill="#161b22"/>
+    <path d="M135 134 v10 M135 144 c-10 8 -22 4 -26 -3 M135 144 c10 8 22 4 26 -3" stroke="#7a4a24" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+    <!-- sunglasses -->
+    <g>
+      <rect x="90"  y="84" width="42" height="32" rx="15" fill="#0b0e12"/>
+      <rect x="138" y="84" width="42" height="32" rx="15" fill="#0b0e12"/>
+      <rect x="129" y="95" width="12" height="7" rx="3" fill="#0b0e12"/>
+      <path d="M97 92 l14 0 -18 18 z"  fill="#2ea043" opacity="0.55"/>
+      <path d="M145 92 l14 0 -18 18 z" fill="#2ea043" opacity="0.55"/>
+    </g>
+
+    <!-- hoodie torso -->
+    <path d="M70 176 C70 150 200 150 200 176 L206 236 C206 250 64 250 64 236 Z" fill="#30363d"/>
+    <ellipse cx="135" cy="168" rx="72" ry="22" fill="#3a424c"/>
+    <!-- drawstrings -->
+    <path d="M124 172 v34" stroke="#2ea043" stroke-width="4" stroke-linecap="round"/>
+    <path d="M146 172 v34" stroke="#2ea043" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="124" cy="208" r="4" fill="#2ea043"/><circle cx="146" cy="208" r="4" fill="#2ea043"/>
+    <!-- pocket -->
+    <rect x="98" y="206" width="74" height="30" rx="8" fill="#262b33"/>
+
+    <!-- paws holding a little board (the Pico) -->
+    <rect x="104" y="196" width="62" height="20" rx="3" fill="#238636"/>
+    <rect x="112" y="200" width="16" height="12" rx="2" fill="#0b0e12"/>
+    <g fill="#f0c542"><circle cx="140" cy="201" r="2"/><circle cx="147" cy="201" r="2"/><circle cx="154" cy="201" r="2"/><circle cx="140" cy="211" r="2"/><circle cx="147" cy="211" r="2"/><circle cx="154" cy="211" r="2"/></g>
+    <ellipse cx="103" cy="206" rx="13" ry="10" fill="#c8763b"/>
+    <ellipse cx="167" cy="206" rx="13" ry="10" fill="#c8763b"/>
+  </g>
+
+  <!-- ===== wordmark ===== -->
+  <text x="286" y="120" font-size="56" font-weight="700" letter-spacing="-1">
+    <tspan fill="#e6edf3">hacke</tspan><tspan fill="#3fb950">roo</tspan>
+  </text>
+  <rect x="522" y="82" width="16" height="44" fill="#3fb950">
+    <animate attributeName="opacity" values="1;1;0;0" dur="1s" repeatCount="indefinite"/>
+  </rect>
+  <text x="288" y="152" font-size="17" fill="#8b949e">RP2350 hardware-hacking multitool</text>
+  <text x="288" y="182" font-size="15" fill="#6e7681">&gt; uart · i2c · spi · jtag · glitch · pio · siggen</text>
+</svg>
