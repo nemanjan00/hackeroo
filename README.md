@@ -170,11 +170,12 @@ implementation.
 ---
 
 ## Power-on animation
-On boot, hackeroo runs a fast knight-rider LED sweep across a configurable GPIO
-range (great with a row of driver-backed LEDs). Point it at your LED pins via
-`CFG_BOOTANIM_*` in [`include/config.h`](include/config.h), or set
-`CFG_BOOTANIM_ENABLE 0` to disable. Trigger the same effect any time with
-`gpio chase <first> <last> [ms]`.
+On boot, hackeroo runs a fast knight-rider LED sweep. By default it covers all
+**26 header GPIOs** (GP0–GP22 and GP26–GP28) — the internal pins GP23/24/25 are
+skipped automatically. Narrow the range or point it at specific LED pins via
+`CFG_BOOTANIM_*` in [`include/config.h`](include/config.h) (or `pins set
+boot.first/boot.last` + `pins save`), or set `CFG_BOOTANIM_ENABLE 0` to disable.
+Trigger the same effect any time with `gpio chase <first> <last> [ms]`.
 
 ## Host client library
 [`client/hackeroo.py`](client/hackeroo.py) is a small pyserial wrapper that

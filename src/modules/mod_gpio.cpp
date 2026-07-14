@@ -30,23 +30,25 @@ static void gpio_watch(int pin) {
   Serial.println("stopped.");
 }
 
+// GP23/24/25 are internal (power-save, VBUS-sense, onboard LED) and not on the
+// header, so the chaser skips them — a 0..28 sweep covers all 26 header GPIOs.
+static bool onHeader(int p) { return (p >= 0 && p <= 22) || (p >= 26 && p <= 28); }
+
 // Knight-rider LED chaser: light each pin in turn, bouncing back and forth.
-// Great for a row of LEDs (with drivers) on consecutive GPIOs.
+// Great for a row of LEDs (with drivers) across the GPIO header.
 static void gpio_chase(int first, int last, int ms) {
   int lo = min(first, last), hi = max(first, last);
-  for (int p = lo; p <= hi; p++) { pinMode(p, OUTPUT); digitalWrite(p, LOW); }
-  Serial.printf("chasing GP%d..GP%d @ %dms — press a key to stop\r\n", lo, hi, ms);
+  for (int p = lo; p <= hi; p++) if (onHeader(p)) { pinMode(p, OUTPUT); digitalWrite(p, LOW); }
+  Serial.printf("chasing GP%d..GP%d @ %dms (internal pins skipped) — press a key to stop\r\n", lo, hi, ms);
   int p = lo, dir = 1;
   while (!console::aborted()) {
-    digitalWrite(p, HIGH);
-    delay(ms);
-    digitalWrite(p, LOW);
+    if (onHeader(p)) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
     if (hi == lo) continue;
     p += dir;
     if (p >= hi) { p = hi; dir = -1; }
     else if (p <= lo) { p = lo; dir = 1; }
   }
-  for (int q = lo; q <= hi; q++) digitalWrite(q, LOW);
+  for (int q = lo; q <= hi; q++) if (onHeader(q)) digitalWrite(q, LOW);
   Serial.println("stopped.");
 }
 

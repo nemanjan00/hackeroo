@@ -10,22 +10,26 @@
 #include "console.h"
 #include "pins.h"
 
+// GP23/24/25 are internal (SMPS power-save, VBUS sense, onboard LED) and not on
+// the header — never drive them. GP0..22 + GP26..28 = the 26 header GPIOs.
+static bool onHeader(int p) { return (p >= 0 && p <= 22) || (p >= 26 && p <= 28); }
+
 // Power-on flourish: a fast knight-rider sweep across the configured GPIO
-// range, then a double flash. Pins are released to INPUT afterwards so the
-// modules can drive/read them normally.
+// range (internal pins skipped), then a double flash. Pins are released to
+// INPUT afterwards so the modules can drive/read them normally.
 static void bootAnimation() {
   if (!cfg.bootanim_enable) return;
   const int lo = cfg.bootanim_first, hi = cfg.bootanim_last, ms = cfg.bootanim_ms;
-  for (int p = lo; p <= hi; p++) { pinMode(p, OUTPUT); digitalWrite(p, LOW); }
-  for (int p = lo; p <= hi; p++) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
-  for (int p = hi - 1; p > lo;  p--) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
+  for (int p = lo; p <= hi; p++) if (onHeader(p)) { pinMode(p, OUTPUT); digitalWrite(p, LOW); }
+  for (int p = lo; p <= hi; p++) if (onHeader(p)) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
+  for (int p = hi - 1; p > lo;  p--) if (onHeader(p)) { digitalWrite(p, HIGH); delay(ms); digitalWrite(p, LOW); }
   for (int f = 0; f < 2; f++) {
-    for (int p = lo; p <= hi; p++) digitalWrite(p, HIGH);
+    for (int p = lo; p <= hi; p++) if (onHeader(p)) digitalWrite(p, HIGH);
     delay(70);
-    for (int p = lo; p <= hi; p++) digitalWrite(p, LOW);
+    for (int p = lo; p <= hi; p++) if (onHeader(p)) digitalWrite(p, LOW);
     delay(70);
   }
-  for (int p = lo; p <= hi; p++) pinMode(p, INPUT);   // release the lines
+  for (int p = lo; p <= hi; p++) if (onHeader(p)) pinMode(p, INPUT);   // release the lines
 }
 
 void setup() {

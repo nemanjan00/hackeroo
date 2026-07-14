@@ -60,11 +60,13 @@
 
 // ---- Power-on LED animation ------------------------------------------------
 // A knight-rider sweep across this GPIO range at boot (point it at your LEDs).
+// The 3 internal pins GP23/24/25 (power-save, VBUS-sense, onboard LED) are
+// skipped automatically, so the default 0..28 covers all 26 header GPIOs.
 // Set CFG_BOOTANIM_ENABLE to 0 to disable. Pins are released (INPUT) after.
 #define CFG_BOOTANIM_ENABLE 1
 #define CFG_BOOTANIM_FIRST  0
-#define CFG_BOOTANIM_LAST   15
-#define CFG_BOOTANIM_MS     35   // per-LED step (faster than the console default)
+#define CFG_BOOTANIM_LAST   28
+#define CFG_BOOTANIM_MS     30   // per-LED step (faster than the console default)
 
 // System clock (RP2350 default). Used to convert cycles <-> nanoseconds.
 #define CFG_SYS_HZ       (F_CPU)
